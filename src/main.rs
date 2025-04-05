@@ -4,6 +4,8 @@ use jsonrpc::{Client, error::RpcError};
 use jsonrpc::simple_http::{self, SimpleHttpTransport};
 use serde_json::value::RawValue;
 use std::sync::{Arc, Mutex};
+use std::env;
+use std::process::exit;
 
 mod conf;
 mod allowlist;
@@ -121,6 +123,13 @@ async fn handle_req(req: Request<Body>, rpc: Arc<VerusRPC>) -> Result<Response<B
 
 #[tokio::main]
 async fn main() {
+
+    if env::args().nth(1).as_deref() == Some("--version") {
+        let name = env!("CARGO_PKG_NAME");
+        let version = env!("CARGO_PKG_VERSION");
+        println!("{name} {version}");
+        exit(0);
+    }
 
     let (rpc_url, rpc_user, rpc_password, server_addr, server_port) = conf::load_settings("Conf");
 
