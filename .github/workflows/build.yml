@@ -1,0 +1,114 @@
+name: build-binaries
+
+on:
+
+  push:
+    branches: [ "master" ]
+
+jobs:
+  linux-windows:
+    runs-on: ubuntu-latest
+
+    permissions:
+        contents: write
+
+    steps:
+    - name: Checkout the repository
+      uses: actions/checkout@v2
+
+    - name: Install Linux and Windows Cross Compilers
+      run: sudo apt install --yes --no-install-recommends musl-tools gcc-mingw-w64-x86-64-win32
+
+    - name: Run tests
+      run: cargo test -- --test-threads=1
+
+    - name: Install rustup targets
+      run: rustup target add x86_64-unknown-linux-musl x86_64-pc-windows-gnu
+
+    - name: Build the executables
+      run: cargo build --release --target x86_64-unknown-linux-musl --target x86_64-pc-windows-gnu
+
+    - name: Available targets
+      run: rustc --print target-list
+      if: failure()
+
+    - name: Compress binaries
+      run: |
+        tar -czvf rust_verusd_rpc_server-gnu-linux-x86_64.tar.gz -C target/x86_64-unknown-linux-musl/release rust_verusd_rpc_server
+        zip -j rust_verusd_rpc_server-windows.zip target/x86_64-pc-windows-gnu/release/rust_verusd_rpc_server.exe
+
+    - name: Generate SHA256 checksums
+      run: |
+        shasum -a 256 rust_verusd_rpc_server-gnu-linux-x86_64.tar.gz > rust_verusd_rpc_server-gnu-linux-x86_64.tar.gz.sha256
+        shasum -a 256 rust_verusd_rpc_server-windows.zip > rust_verusd_rpc_server-windows.zip.sha256
+
+    - name: Extract version from source
+      run: |
+        PACKAGE=$(cargo metadata --format-version 1 | jq -r '.packages[] | select(.name == "rust_verusd_rpc_server") | .version')
+        SHA=$(git rev-parse --short HEAD)
+        echo "VERSION=$PACKAGE-$SHA" >> $GITHUB_ENV
+
+    - name: Upload release asset
+      uses: softprops/action-gh-release@v2
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        tag_name: ${{ env.VERSION }}
+        body:
+        files: |
+          rust_verusd_rpc_server-gnu-linux-x86_64.tar.gz
+          rust_verusd_rpc_server-gnu-linux-x86_64.tar.gz.sha256
+          rust_verusd_rpc_server-windows.zip
+          rust_verusd_rpc_server-windows.zip.sha256
+
+
+  macos:
+    runs-on: macos-latest
+
+    permissions:
+        contents: write
+
+    steps:
+    - name: Checkout the repository
+      uses: actions/checkout@v2
+
+    - name: Run tests
+      run: cargo test -- --test-threads=1
+
+    - name: Install rustup targets
+      run: rustup target add x86_64-apple-darwin aarch64-apple-darwin
+
+    - name: Build the executable
+      run: cargo build --release --target=x86_64-apple-darwin --target=aarch64-apple-darwin
+
+    - name: Available targets
+      run: rustc --print target-list
+      if: failure()
+
+    - name: Compress binaries
+      run: |
+        tar -czvf rust_verusd_rpc_server-macos-x86_64.tar.gz -C target/x86_64-apple-darwin/release rust_verusd_rpc_server
+        tar -czvf rust_verusd_rpc_server-macos-aarch64.tar.gz -C target/aarch64-apple-darwin/release rust_verusd_rpc_server
+
+    - name: Generate SHA256 checksums
+      run: |
+        shasum -a 256 rust_verusd_rpc_server-macos-x86_64.tar.gz > rust_verusd_rpc_server-macos-x86_64.tar.gz.sha256
+        shasum -a 256 rust_verusd_rpc_server-macos-aarch64.tar.gz > rust_verusd_rpc_server-macos-aarch64.tar.gz.sha256
+
+    - name: Extract version from source
+      run: |
+        PACKAGE=$(cargo metadata --format-version 1 | jq -r '.packages[] | select(.name == "rust_verusd_rpc_server") | .version')
+        SHA=$(git rev-parse --short HEAD)
+        echo "VERSION=$PACKAGE-$SHA" >> $GITHUB_ENV
+
+    - name: Upload release asset
+      uses: softprops/action-gh-release@v2
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        tag_name: ${{ env.VERSION }}
+        body:
+        files: |
+          rust_verusd_rpc_server-macos-x86_64.tar.gz
+          rust_verusd_rpc_server-macos-x86_64.tar.gz.sha256
+          rust_verusd_rpc_server-macos-aarch64.tar.gz
+          rust_verusd_rpc_server-macos-aarch64.tar.gz.sha256
+        
