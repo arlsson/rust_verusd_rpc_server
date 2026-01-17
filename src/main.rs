@@ -4,11 +4,15 @@ use jsonrpc::{Client, error::RpcError};
 use jsonrpc::simple_http::{self, SimpleHttpTransport};
 use serde_json::value::RawValue;
 use std::sync::{Arc, Mutex};
+use tokio::time::{timeout, Duration};
 use std::env;
 use std::process::exit;
 
+
 mod conf;
 mod allowlist;
+
+const READ_TIMEOUT_SECS: Duration = Duration::from_secs(5);
 
 struct VerusRPC {
     client: Arc<Mutex<Client>>,
@@ -94,9 +98,33 @@ async fn handle_req(req: Request<Body>, rpc: Arc<VerusRPC>) -> Result<Response<B
             }
         }
     }
-    
-    let whole_body = hyper::body::to_bytes(req.into_body()).await?;
-    let str_body = String::from_utf8(whole_body.to_vec()).unwrap();
+
+    let whole_body = match timeout(READ_TIMEOUT_SECS, hyper::body::to_bytes(req.into_body())).await {
+        Ok(Ok(b)) => b,
+        Ok(Err(_e)) => {
+            return Ok(Response::builder()
+                .status(hyper::StatusCode::BAD_REQUEST)
+                .body(Body::from("Failed to read request body"))
+                .unwrap());
+        }
+        Err(_) => {
+            return Ok(Response::builder()
+                .status(hyper::StatusCode::BAD_REQUEST)
+                .body(Body::from("Failed to read request body - timeout"))
+                .unwrap());
+        }
+    };
+
+    let str_body = match String::from_utf8(whole_body.to_vec()) {
+        Ok(s) => s,
+        Err(_e) => {
+            return Ok(Response::builder()
+                .status(hyper::StatusCode::BAD_REQUEST)
+                .body(Body::from("Invalid UTF-8 in request body"))
+                .unwrap());
+        }
+    };
+
     let json_body: Result<Value, _> = serde_json::from_str(&str_body);
     let result = match json_body {
         Ok(req_body) => rpc.handle(req_body),

@@ -93,6 +93,7 @@ pub fn is_method_allowed(method: &str, params: &[Box<RawValue>]) -> bool {
         "getidentity" => check_params(params, &["str", "int", "bool", "int"]),
         "getidentitytrust" => check_params(params, &["arr"]),
         "getidentitycontent" => check_params(params, &["str", "int", "int", "bool", "int", "str", "bool"]),
+        "getidentityhistory" => check_params(params, &["str", "int", "int", "bool", "int"]),
         "getlastimportfrom" => check_params(params, &["str"]),
         "getlaunchinfo" => check_params(params, &["str"]),
         "getmempoolinfo" => check_params(params, &[]),
