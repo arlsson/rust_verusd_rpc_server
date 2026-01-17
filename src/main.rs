@@ -5,7 +5,11 @@ use jsonrpc::simple_http::{self, SimpleHttpTransport};
 use serde_json::value::RawValue;
 use std::sync::{Arc, Mutex};
 use tokio::time::{timeout, Duration};
+use std::env;
+use std::process::exit;
 
+
+mod conf;
 mod allowlist;
 
 const READ_TIMEOUT_SECS: Duration = Duration::from_secs(5);
@@ -147,21 +151,20 @@ async fn handle_req(req: Request<Body>, rpc: Arc<VerusRPC>) -> Result<Response<B
 
 #[tokio::main]
 async fn main() {
-    let mut settings = config::Config::default();
-    
-    settings.merge(config::File::with_name("Conf")).expect("Failed to open configuration file");
 
-    let url = settings.get_str("rpc_url").expect("Failed to read 'rpc_url' from configuration");
-    let user = settings.get_str("rpc_user").expect("Failed to read 'rpc_user' from configuration");
-    let password = settings.get_str("rpc_password").expect("Failed to read 'rpc_password' from configuration");
-    
-    let port = settings.get::<u16>("server_port").expect("Failed to read 'server_port' from configuration");
-    let server_addr = settings.get_str("server_addr").expect("Failed to read 'server_addr' from configuration");
+    if env::args().nth(1).as_deref() == Some("--version") {
+        let name = env!("CARGO_PKG_NAME");
+        let version = env!("CARGO_PKG_VERSION");
+        println!("{name} {version}");
+        exit(0);
+    }
 
-    let addr = (server_addr.parse::<std::net::IpAddr>().unwrap(), port).into();
+    let (rpc_url, rpc_user, rpc_password, server_addr, server_port) = conf::load_settings("Conf");
+
+    let addr = (server_addr.parse::<std::net::IpAddr>().unwrap(), server_port).into();
 
     let make_svc = make_service_fn(|_conn| {
-        let rpc = Arc::new(VerusRPC::new(&url, &user, &password).unwrap());
+        let rpc = Arc::new(VerusRPC::new(&rpc_url, &rpc_user, &rpc_password).unwrap());
         async {
             Ok::<_, hyper::Error>(service_fn(move |req| handle_req(req, rpc.clone())))
         }
@@ -169,7 +172,10 @@ async fn main() {
 
     let server = Server::bind(&addr).serve(make_svc);
 
+    println!("Server running at {}:{}", server_addr, server_port);
+
     if let Err(e) = server.await {
         eprintln!("server error: {}", e);
     }
+
 }
