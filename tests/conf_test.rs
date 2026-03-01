@@ -10,7 +10,7 @@ use crate::conf::get_value;
 
 
 fn get_environment_keys() -> &'static [&'static str] {
-    return &["RPC_URL", "RPC_USER", "RPC_PASSWORD", "SERVER_ADDR", "SERVER_PORT"];
+    return &["RPC_URL", "RPC_USER", "RPC_PASSWORD", "SERVER_ADDR", "SERVER_PORT", "RPC_TIMEOUT"];
 }
 
 
@@ -70,7 +70,7 @@ fn test_get_value_from_env() {
 
     env::set_var("RPC_URL", "http://env-url:8545");
 
-    let (rpc_url, _, _, _, _) = load_settings("_Conf");
+    let (rpc_url, _, _, _, _, _) = load_settings("_Conf");
     assert_eq!(rpc_url, "http://env-url:8545");
 }
 
@@ -94,7 +94,7 @@ fn test_get_port_from_env() {
     env::set_var("SERVER_PORT", "9090");
 
 
-    let (_, _, _, _, server_port) = load_settings("_Conf");
+    let (_, _, _, _, _, server_port) = load_settings("_Conf");
     assert_eq!(server_port, 9090);
 }
 
@@ -106,6 +106,32 @@ fn test_get_port_invalid_value() {
     setup_enviroment();
 
     env::set_var("SERVER_PORT", "invalid");
+
+
+    let _ = load_settings("_Conf");
+}
+
+
+#[test]
+fn test_get_timeout_from_env() {
+
+    setup_enviroment();
+
+    env::set_var("RPC_TIMEOUT", "9090");
+
+
+    let (_, _, _, server_timeout, _, _) = load_settings("_Conf");
+    assert_eq!(server_timeout, 9090);
+}
+
+
+#[test]
+#[should_panic(expected = "RPC_TIMEOUT is not a valid number.: ParseIntError { kind: InvalidDigit }")]
+fn test_get_timeout_invalid_value() {
+
+    setup_enviroment();
+
+    env::set_var("RPC_TIMEOUT", "invalid");
 
 
     let _ = load_settings("_Conf");
