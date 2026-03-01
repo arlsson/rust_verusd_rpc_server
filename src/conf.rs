@@ -19,7 +19,7 @@ pub fn get_value(settings: &config::Config, key: &str) -> String {
 
 
 #[allow(non_snake_case)]
-pub fn load_settings(name: &str) -> (String, String, String, String, u16) {
+pub fn load_settings(name: &str) -> (String, String, String, u64, String, u16) {
 
     let mut settings = config::Config::default();
 
@@ -30,9 +30,11 @@ pub fn load_settings(name: &str) -> (String, String, String, String, u16) {
     let RPC_URL = get_value(&settings, "RPC_URL");
     let RPC_USER = get_value(&settings, "RPC_USER");
     let RPC_PASSWORD = get_value(&settings, "RPC_PASSWORD");
+    let RPC_TIMEOUT: u64 = get_value(&settings, "RPC_TIMEOUT").parse().expect("RPC_TIMEOUT is not a valid number.");
+
     let SERVER_ADDR = get_value(&settings, "SERVER_ADDR");
     let SERVER_PORT: u16 = get_value(&settings, "SERVER_PORT").parse().expect("SERVER_PORT is not a valid port number.");
 
-    return (RPC_URL, RPC_USER, RPC_PASSWORD, SERVER_ADDR, SERVER_PORT);
+    return (RPC_URL, RPC_USER, RPC_PASSWORD, RPC_TIMEOUT, SERVER_ADDR, SERVER_PORT);
 }
 

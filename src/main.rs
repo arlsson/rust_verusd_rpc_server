@@ -12,7 +12,9 @@ use std::process::exit;
 mod conf;
 mod allowlist;
 
-const READ_TIMEOUT_SECS: Duration = Duration::from_secs(5);
+
+static mut READ_TIMEOUT_SECS: Duration = Duration::from_secs(5); 
+
 
 struct VerusRPC {
     client: Arc<Mutex<Client>>,
@@ -99,7 +101,7 @@ async fn handle_req(req: Request<Body>, rpc: Arc<VerusRPC>) -> Result<Response<B
         }
     }
 
-    let whole_body = match timeout(READ_TIMEOUT_SECS, hyper::body::to_bytes(req.into_body())).await {
+    let whole_body = match timeout(unsafe { READ_TIMEOUT_SECS }, hyper::body::to_bytes(req.into_body())).await {
         Ok(Ok(b)) => b,
         Ok(Err(_e)) => {
             return Ok(Response::builder()
@@ -159,7 +161,11 @@ async fn main() {
         exit(0);
     }
 
-    let (rpc_url, rpc_user, rpc_password, server_addr, server_port) = conf::load_settings("Conf");
+    let (rpc_url, rpc_user, rpc_password, rpc_timeout, server_addr, server_port) = conf::load_settings("Conf");
+
+    unsafe {
+        READ_TIMEOUT_SECS = Duration::from_secs(rpc_timeout);
+    }
 
     let addr = (server_addr.parse::<std::net::IpAddr>().unwrap(), server_port).into();
 
