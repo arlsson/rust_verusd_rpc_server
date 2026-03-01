@@ -25,6 +25,7 @@ impl VerusRPC {
         let transport = SimpleHttpTransport::builder()
             .url(url)?
             .auth(user, Some(pass))
+            .timeout(unsafe { READ_TIMEOUT_SECS })
             .build();
         Ok(VerusRPC { client: Arc::new(Mutex::new(Client::with_transport(transport))) })
     }
